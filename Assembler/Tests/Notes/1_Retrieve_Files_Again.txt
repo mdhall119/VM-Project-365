@@ -1,0 +1,15 @@
+
+How to Copy Files From Hydra/Tesla Machines to a Personal Directory/Computer
+February 2025
+Sarah Pastor
+
+1. Open your command line and connect to the machines (ssh netid@hydra##.eecs.utk.edu)
+2. Enter your password and two-factor authenticate
+3. Create a directory that you will zip later (mkdir directory_name)
+4. Navigate into that directory (cd directory_name)
+5. Copy all of Marz's tests to that directory (cp /home/smarz1/courses/cosc365/project/tests/* .)
+6. Leave that directory (cd ..)
+7. Zip the directory, carefully. It should zip instantly (zip -r name.zip directory_name)
+8. Open a new terminal window and copy the zip file (scp netid@hydra##.eecs.utk.edu:name.zip ./Downloads)
+9. Move the zip file to your repository and unzip it
+

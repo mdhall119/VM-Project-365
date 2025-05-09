@@ -1,0 +1,15 @@
+abs.asm
+add.asm
+all.asm
+avg.asm
+calc.asm
+call.asm
+debug.asm
+for.asm
+print.asm
+str.asm
+stinput.asm
+sum.asm
+swap.asm
+sign.asm
+twoc.asm

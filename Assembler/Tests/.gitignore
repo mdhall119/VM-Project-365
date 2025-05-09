@@ -1,0 +1,16 @@
+# Keep the test files
+!*.asm
+!*.v
+!.keep
+
+# Ignore all Binary files, exclude with extensions and directories
+*
+!*.*
+!*/
+
+# Don't keep our builds
+v/*.v
+v/*.txt
+
+# MacOS of course
+.DS_Store

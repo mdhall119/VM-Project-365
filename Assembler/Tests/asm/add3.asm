@@ -1,0 +1,3 @@
+main:
+    add
+    exit

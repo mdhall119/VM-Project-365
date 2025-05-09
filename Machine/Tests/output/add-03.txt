@@ -1,0 +1,2 @@
+Welcome to the number adder!
+Enter left: Enter right: Result = 3

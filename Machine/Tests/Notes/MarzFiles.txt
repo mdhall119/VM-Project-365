@@ -1,0 +1,15 @@
+abs.v
+add.v
+all.v
+avg.v
+calc.v
+call.v
+debug.v
+for.v
+print.v
+str.v
+stinput.v
+sum.v
+swap.v
+sign.v
+twoc.v

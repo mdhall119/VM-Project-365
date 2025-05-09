@@ -1,0 +1,28 @@
+0 - exit
+1 - add
+2 - subtract
+3 - multiply
+4 - divide
+5 - mod
+6 - and
+7 - or
+8 - xor
+9 - lsl
+10 - lsr
+11 - asr
+Enter menu option: Enter left operand: Enter right operand: 6
+
+
+0 - exit
+1 - add
+2 - subtract
+3 - multiply
+4 - divide
+5 - mod
+6 - and
+7 - or
+8 - xor
+9 - lsl
+10 - lsr
+11 - asr
+Enter menu option: 

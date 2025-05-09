@@ -1,0 +1,110 @@
+#!/bin/bash
+
+# Script to build the zip of the necessary files to turn it in
+# and optionally include all files for lab testing.
+
+# Function to display help message
+show_help() {
+    echo "Usage: $0 [netid] | [-h|--help] [-l|--lab]"
+    echo
+    echo "Options:"
+    echo "  -h, --help    Display this help message and exit"
+    echo "  -l, --lab     Include all files except .git files/directories"
+    echo "  netid         Specify your netid for the zip file name"
+    echo
+    echo "If netid is not provided, the script will try to read it from netid.txt"
+    echo "or prompt you to enter it interactively."
+    exit 0
+}
+
+# Initialize lab mode flag
+lab_mode=false
+
+# Check for help flags
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    show_help
+fi
+
+# Check for lab mode flag
+for arg in "$@"; do
+    if [ "$arg" = "--lab" ] || [ "$arg" = "-l" ]; then
+        lab_mode=true
+        # Remove lab flag from arguments
+        set -- "${@/$arg/}"
+        break
+    fi
+done
+
+# Use the first argument as netid if provided, else check netid.txt, then prompt user
+if [ $# -ge 1 ] && [ "$1" != "" ]; then
+    netid="$1"
+elif [ -f "netid.txt" ]; then
+    netid=$(cat netid.txt)
+else
+    echo "Enter your netid: "
+    read netid
+fi
+
+# Ensure netid is not empty
+if [ -z "$netid" ]; then
+    echo "Error: netid cannot be empty."
+    exit 1
+fi
+
+# Create a new directory (if it doesn't exist)
+mkdir -p "$netid"
+
+# Copy files based on mode
+if [ "$lab_mode" = true ]; then
+    echo "Creating lab testing zip file (includes test files)"
+    
+    # Find files to copy, excluding the patterns we don't want
+    find . -type f \
+        -not -path "*/\.git/*" \
+        -not -path "*$netid*" \
+        -not -path "*/obj/*" \
+        -not -path "*/bin/*" \
+        -not -path "*/Notes/*" \
+        -not -name ".DS_STORE" \
+        -not -name ".DS_Store" \
+        -not -name ".ds_store" \
+        -not -name ".gitattributes" \
+        -not -name ".gitignore" \
+        -not -name "*.zip" | while read file; do
+        # Create the directory structure
+        dir=$(dirname "$file")
+        mkdir -p "$netid/$dir"
+        # Copy the file
+        cp "$file" "$netid/$file"
+    done
+    
+    # Create empty directories (excluding the same patterns)
+    find . -type d \
+        -not -path "*/\.git*" \
+        -not -path "*$netid*" \
+        -not -path "*/obj*" \
+        -not -path "*/bin*" \
+        -not -path "*/Notes*" \
+        -empty | while read dir; do
+        mkdir -p "$netid/$dir"
+    done
+else
+    # Copy the specified files and directories, preserving the structure
+    cp -R Main.cs Main.csproj "$netid"/
+    cp -R Assembler/ "$netid"/Assembler/
+    cp -R Instructions/ "$netid"/Instructions/
+fi
+
+# Remove existing zip file if it exists
+if [ -f "$netid.zip" ]; then
+    echo "Removing existing $netid.zip"
+    rm "$netid.zip"
+fi
+
+# Zip the new directory
+zip -r "$netid.zip" "$netid"
+
+# Remove the new directory
+rm -r "$netid"
+
+echo "Created $netid.zip successfully."

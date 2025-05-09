@@ -1,0 +1,28 @@
+assemble
+machine
+
+# Keep the test files
+!*.asm
+!*.v
+!.keep
+!*.txt
+!our/.keep
+
+# Ignore all Binary files, exclude with extensions and directories
+*
+!*.*
+!*/
+
+# MacOS of course
+.DS_Store
+
+# Forms of compressed files
+*.zip
+*.tar
+*.gz
+*.tgz
+*.bz2
+*.rar
+
+# Ignore our files
+our/

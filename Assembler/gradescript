@@ -1,0 +1,210 @@
+#!/bin/bash
+
+# Gradesript to run the tests for assembler
+
+# https://stackoverflow.com/questions/5947742/how-to-change-the-output-color-of-echo-in-linux
+NC='\033[0m' # No Color
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+
+# Function to display help
+show_help() {
+  echo "Usage: $0 [OPTIONS] [TEST_NAME]"
+  echo ""
+  echo "Run tests for the assembler."
+  echo ""
+  echo "Options:"
+  echo "  -h, --help      Display this help message and exit"
+  echo "  --no-colors     Disable colored output"
+  echo "  --get-marz      Retrieve reference outputs using Marz's assembler"
+  echo ""
+  echo "Arguments:"
+  echo "  TEST_NAME       Run only the specified test (with or without .asm extension)"
+  echo "                  If not provided, all tests will be run"
+  echo ""
+  echo "Examples:"
+  echo "  $0                Run all tests with colored output"
+  echo "  $0 test1          Run only test1.asm"
+  echo "  $0 --no-colors    Run all tests without colored output"
+  echo "  $0 --get-marz     Generate reference outputs from Marz's assembler"
+  exit 0
+}
+
+# Immediately check for the help flag and exit if found
+for arg in "$@"; do
+  if [ "$arg" == "-h" ] || [ "$arg" == "--help" ]; then
+    show_help
+  fi
+done
+
+# Check for --no-colors flag and others
+use_colors=true
+args=()
+for arg in "$@"; do
+  if [ "$arg" == "--no-colors" ]; then
+    use_colors=false
+    NC=''
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+  elif [ "$arg" != "-h" ] && [ "$arg" != "--help" ]; then
+    args+=("$arg")
+  fi
+done
+
+# Define input and output directories
+input_dir="Tests/asm"
+output_dir="Tests/v"
+correct_dir="Tests/marz"
+
+# Function to get reference outputs from Marz's assembler
+get_marz_outputs() {
+  echo -e "${BLUE}Getting reference outputs from Marz's assembler${NC}"
+  
+  # Clear the marz directory but keep the .keep file
+  find "$correct_dir" -type f -not -name ".keep" -delete
+
+  # Initialize counters
+  local total=0
+  local correct=0
+
+  # Process each .asm file
+  for input_file in "$input_dir"/*.asm; do
+    ((total++))
+    local input_filename=$(basename "$input_file")
+    local output_file="$correct_dir/${input_filename%.*}.v"
+    
+    echo -e "${YELLOW}Processing $input_filename${NC}"
+    
+    # Run Marz's assembler
+    /home/smarz1/courses/cosc365/project/tests/assemble "$input_file" "$output_file"
+    
+    if [ $? -eq 0 ]; then
+      echo -e "${GREEN}Successfully generated $output_file${NC}"
+      ((correct++))
+    else
+      echo -e "${RED}Failed to generate $output_file${NC}"
+    fi
+  done
+
+  echo ""
+  echo "${correct} out of ${total} built successfully"
+  exit 0
+}
+
+# Process --get-marz flag before performing any compilation
+for arg in "$@"; do
+  if [ "$arg" == "--get-marz" ]; then
+    get_marz_outputs
+  fi
+done
+
+# Initialize counters for passed and failed tests
+passed=0
+failed=0
+
+# Track if we're running a single test or all tests
+running_all_tests=true
+
+# Check which runtime environment is available
+use_dotnet=false
+use_mono=false
+
+if command -v dotnet &> /dev/null; then
+    use_dotnet=true
+    echo -e "${BLUE}Using dotnet${NC}"
+elif command -v mcs &> /dev/null && command -v mono &> /dev/null; then
+    use_mono=true
+    echo -e "${BLUE}Using mono runtime${NC}"
+    echo -e "${YELLOW}Compiling program with mcs...${NC}"
+    mcs -langversion:7.2 -out:assembler.exe $(find . -name "*.cs")
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Compilation failed!${NC}"
+        exit 1
+    fi
+else
+    echo -e "${RED}Error: Neither dotnet nor mono/mcs are available.${NC}"
+    echo -e "${RED}Please install .NET SDK or Mono to run this script.${NC}"
+    exit 1
+fi
+
+# Function to run a single test
+run_test() {
+  local input_file="$1"
+  local input_filename=$(basename "$input_file")
+  local test_result=0 # 0 for success, 1 for failure
+
+  # Get the corresponding output file
+  local output_file="$output_dir/${input_filename%.*}.v"
+
+  # Get the corresponding correct file
+  local correct_file="$correct_dir/${input_filename%.*}.v"
+
+  # Run the program with the input file using the available runtime
+  if [ "$use_dotnet" = true ]; then
+    dotnet run -- "$input_file" "$output_file" > /dev/null
+  elif [ "$use_mono" = true ]; then
+    mono assembler.exe "$input_file" "$output_file" > /dev/null
+  fi
+
+  # Generate error log path
+  error_log="$output_dir/${input_filename%.*}-error.txt"
+
+  # Compare xxd output of correct_file and output_file
+  if xxd "$correct_file" | diff -w - <(xxd "$output_file") > /dev/null ; then
+    echo -e "${GREEN}$input_filename: PASSED${NC}"
+    ((passed++))
+  else
+    echo -e "${RED}$input_filename: FAILED${NC}"
+    echo "Error comparing $input_filename" > "$error_log"
+    echo "Expected output (left) vs. Actual output (right):" >> "$error_log"
+    diff -y <(xxd "$correct_file") <(xxd "$output_file") >> "$error_log"
+    ((failed++))
+    test_result=1
+  fi
+  
+  return $test_result
+}
+
+# Process the filtered arguments
+if [ ${#args[@]} -eq 1 ]; then
+  test_name="${args[0]}"
+  
+  # Remove file extension if provided
+  test_base="${test_name%.*}"
+  
+  # Try to find the test file
+  if [ -f "$input_dir/$test_base.asm" ]; then
+    echo -e "${BLUE}Running: $test_base.asm${NC}"
+    running_all_tests=false
+    rm -f "$output_dir/${test_base}.v" # Ensure we start fresh for this test
+    run_test "$input_dir/$test_base.asm"
+    
+    # If the test failed and it was a single test, show the error details
+    if [ $? -eq 1 ]; then
+      error_log="$output_dir/${test_base}-error.txt"
+      echo -e "${YELLOW}Error details:${NC}"
+      cat "$error_log"
+    fi
+  else
+    echo -e "${YELLOW}Test '$test_base' not found.${NC}"
+    exit 0
+  fi
+else
+  # Run all tests
+  # Clear the our directory but keep the .keep file
+  find "$output_dir" -type f -not -name ".keep" -delete
+  for input_file in "$input_dir"/*.asm
+  do
+    run_test "$input_file"
+  done
+fi
+
+# Only print totals when running all tests
+if [ "$running_all_tests" = true ]; then
+  echo ""
+  echo "$passed correct out of $((passed + failed))"
+fi

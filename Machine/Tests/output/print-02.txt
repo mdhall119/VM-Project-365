@@ -1,0 +1,4 @@
+Enter a value: In decimal: 1
+In hex    : 0x1
+In binary : 0b1
+In octal  : 0o1
